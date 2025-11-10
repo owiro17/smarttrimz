@@ -82,7 +82,7 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row {
+        Row (horizontalArrangement = Arrangement.Center){
             Text("Don't have an account?")
             TextButton(onClick = { /* TODO: Navigate to Sign Up */ }) {
                 Text("Sign Up")

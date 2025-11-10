@@ -27,6 +27,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.smarttrimz.screens.BookAppointmentScreen
 import com.example.smarttrimz.screens.BookingsScreen
 import com.example.smarttrimz.screens.HomeScreen
 import com.example.smarttrimz.screens.LoginScreen
@@ -54,7 +55,7 @@ sealed class Screen(val route: String) {
     object Bookings : Screen("bookings")
     object Profile : Screen("profile")
     // We'll add this one later
-    // object BookAppointment : Screen("book_appointment")
+     object BookAppointment : Screen("book_appointment")
 }
 
 // A list of the screens that show the bottom nav bar
@@ -139,13 +140,29 @@ fun AppNavigation() {
 
             // --- Main App Screens (inside the bottom bar) ---
             composable(Screen.Home.route) {
-                HomeScreen()
+                HomeScreen(
+                    onBookAppointmentClick = {
+                        navController.navigate(Screen.BookAppointment.route)
+                    }
+                )
             }
             composable(Screen.Bookings.route) {
                 BookingsScreen()
             }
             composable(Screen.Profile.route) {
                 ProfileScreen()
+            }
+            composable(Screen.BookAppointment.route) {
+
+                BookAppointmentScreen(
+                    // This callback will send the user back
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+                    onConfirmBookingClick = {
+                        navController.navigate(Screen.Bookings.route)
+                    }
+                )
             }
         }
     }
