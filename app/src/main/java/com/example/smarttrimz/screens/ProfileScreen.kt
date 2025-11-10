@@ -121,7 +121,7 @@ fun ProfileScreen(
             onClick = {
                 // TODO: Backend team will trigger navigation to a
                 // new 'ChangePasswordScreen' or show a dialog
-                onChangePasswordClick()
+                onLogoutClick()
             },
             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                 containerColor = Color.Red,
@@ -142,7 +142,7 @@ fun ProfileScreen(
             onClick = {
                 // TODO: Backend team will take `name`, `email`, `address`
                 // and call their updateUser() API
-                onLogoutClick()
+                onSaveChangesClick()
             },
             modifier = Modifier
                 .fillMaxWidth()

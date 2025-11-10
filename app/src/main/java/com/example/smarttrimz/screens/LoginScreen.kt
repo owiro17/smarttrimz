@@ -29,7 +29,8 @@ fun LoginScreen(
     // We now accept a *function* as a parameter.
     // This is called a "callback".
     // It has a default value of {} (do nothing) for the Preview.
-    onLoginClick: () -> Unit = {}
+    onLoginClick: () -> Unit = {},
+    onSignUpClick: () -> Unit = {}
 ) {
 
     // These are the "State" variables. They are the "memory"
@@ -46,7 +47,7 @@ fun LoginScreen(
     ) {
 
         Text(
-            text = "Welcome Back",
+            text = "Welcome To Smart Trimz",
             style = androidx.compose.material3.MaterialTheme.typography.headlineMedium
         )
 
@@ -82,9 +83,11 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row (horizontalArrangement = Arrangement.Center){
+        Row (verticalAlignment = Alignment.CenterVertically){
             Text("Don't have an account?")
-            TextButton(onClick = { /* TODO: Navigate to Sign Up */ }) {
+            TextButton(onClick = { onSignUpClick() }) {
+
+
                 Text("Sign Up")
             }
         }

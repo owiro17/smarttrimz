@@ -32,6 +32,7 @@ import com.example.smarttrimz.screens.BookingsScreen
 import com.example.smarttrimz.screens.HomeScreen
 import com.example.smarttrimz.screens.LoginScreen
 import com.example.smarttrimz.screens.ProfileScreen
+import com.example.smarttrimz.screens.SignUpScreen
 import com.example.smarttrimz.ui.theme.SmartTrimzTheme
 
 class MainActivity : ComponentActivity() {
@@ -51,10 +52,10 @@ class MainActivity : ComponentActivity() {
 // We create sealed classes for type-safe navigation
 sealed class Screen(val route: String) {
     object Login : Screen("login")
+    object SignUp : Screen("signup",)
     object Home : Screen("home")
     object Bookings : Screen("bookings")
     object Profile : Screen("profile")
-    // We'll add this one later
      object BookAppointment : Screen("book_appointment")
 }
 
@@ -128,13 +129,25 @@ fun AppNavigation() {
                             popUpTo(Screen.Login.route) { inclusive = true }
                         }
                     },
-//                    onSignUpClick = {
-//                        // TODO: Create and navigate to SignUpScreen
-//                        // For now, we'll just go to Home as well
-//                        navController.navigate(Screen.Home.route) {
-//                            popUpTo(Screen.Login.route) { inclusive = true }
-//                        }
-//                    }
+                    onSignUpClick = {
+                        // TODO: Create and navigate to SignUpScreen
+                        // For now, we'll just go to Home as well
+                        navController.navigate(Screen.SignUp.route) {
+                            popUpTo(Screen.Login.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+            // SignUp Screen
+            composable(Screen.SignUp.route) {
+                SignUpScreen (
+                    onSignUpClick = {
+                        navController.navigate(Screen.Login.route)
+                    },
+                    onLoginClick = {
+                        navController.navigate(Screen.Login.route)
+                    }
+
                 )
             }
 
@@ -150,7 +163,18 @@ fun AppNavigation() {
                 BookingsScreen()
             }
             composable(Screen.Profile.route) {
-                ProfileScreen()
+                ProfileScreen(
+                    onSaveChangesClick = {
+                        // TODO: Backend team will call their updateUser() API
+                    },
+                    onChangePasswordClick = {
+                        // TODO: Backend team will trigger navigation to a
+                        // new 'ChangePasswordScreen' or show a dialog
+                    },
+                    onLogoutClick = {
+                        navController.navigate(Screen.Login.route)
+                    }
+                )
             }
             composable(Screen.BookAppointment.route) {
 
