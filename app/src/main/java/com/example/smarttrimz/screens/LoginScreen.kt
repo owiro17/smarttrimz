@@ -25,24 +25,24 @@ import androidx.compose.ui.unit.dp
 import com.example.smarttrimz.ui.theme.SmartTrimzTheme
 
 @Composable
-fun LoginScreen() {
+fun LoginScreen(
+    // We now accept a *function* as a parameter.
+    // This is called a "callback".
+    // It has a default value of {} (do nothing) for the Preview.
+    onLoginClick: () -> Unit = {}
+) {
 
     // These are the "State" variables. They are the "memory"
     // for what the user types into the text fields.
-    // 'remember' keeps the value alive.
-    // 'mutableStateOf' makes it changeable.
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
     Column(
-        // 'modifier' is like a set of instructions for a Composable
         modifier = Modifier
-            .fillMaxSize() // Fills the whole screen
-            .padding(16.dp), // Adds 16.dp of padding on all sides
-        // 'verticalArrangement' controls how items are spaced vertically
-        verticalArrangement = Arrangement.Center, // Puts everything in the vertical center
-        // 'horizontalAlignment' controls how items are aligned horizontally
-        horizontalAlignment = Alignment.CenterHorizontally // Puts everything in the horizontal center
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
         Text(
@@ -50,31 +50,31 @@ fun LoginScreen() {
             style = androidx.compose.material3.MaterialTheme.typography.headlineMedium
         )
 
-        Spacer(modifier = Modifier.height(16.dp)) // An invisible 16dp spacer
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // This is the Email text field
         OutlinedTextField(
-            value = email, // The text to *display* (comes from our 'email' state)
-            onValueChange = { email = it }, // When the user types, *update* our 'email' state
-            label = { Text("Email") }, // The floating label
-            modifier = Modifier.fillMaxWidth() // Make this field fill the width
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Email") },
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // This is the Password text field
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation(), // This hides the text as '...'
+            visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { /* We'll add navigation logic here later! */ },
+            // When the button is clicked, we call the 'onLoginClick'
+            // function that was passed in to us from MainActivity.
+            onClick = onLoginClick,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Log In")
@@ -82,11 +82,9 @@ fun LoginScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // This is our Row for the "Sign Up" text
         Row {
             Text("Don't have an account?")
-            // TextButton makes text clickable
-            TextButton(onClick = { /* We'll navigate to Sign Up later! */ }) {
+            TextButton(onClick = { /* TODO: Navigate to Sign Up */ }) {
                 Text("Sign Up")
             }
         }
