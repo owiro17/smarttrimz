@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "912246263188",
+    "project_id": "smarttrimz-56cc5",
+    "storage_bucket": "smarttrimz-56cc5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:912246263188:android:27ebc351170ecb2b861381",
+        "android_client_info": {
+          "package_name": "com.example.smarttrimz"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCuoTUtiAcvXwM2Yewwz2UIlHJkKsrPbNc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
