@@ -1,15 +1,10 @@
+
 package com.example.smarttrimz.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -21,37 +16,33 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.smarttrimz.data.Barber
+import com.example.smarttrimz.data.Booking
 import com.example.smarttrimz.ui.theme.SmartTrimzTheme
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.*
 
 // --- Placeholder Data ---
-// The backend team will provide this data later.
-val placeholderBarbers = listOf("Mike Johnson", "Alex Smith", "Chris Brown")
+// We'''ll keep this for the dates and times for now
 val placeholderDates = listOf(
     "Tue 10" to "Dec",
     "Wed 11" to "Dec",
@@ -67,18 +58,105 @@ val placeholderTimes = listOf(
 )
 // -------------------------
 
+// --- ViewModel for Booking Logic ---
+class BookingViewModel : ViewModel() {
+    private val db = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
+
+    private val _barbers = MutableStateFlow<List<Barber>>(emptyList())
+    val barbers: StateFlow<List<Barber>> = _barbers
+
+    private val _bookingState = MutableStateFlow<BookingState>(BookingState.Idle)
+    val bookingState: StateFlow<BookingState> = _bookingState
+
+    init {
+        fetchBarbers()
+    }
+
+    private fun fetchBarbers() {
+        viewModelScope.launch {
+            try {
+                val snapshot = db.collection("barbers").get().await()
+                val barberList = snapshot.toObjects(Barber::class.java)
+                _barbers.value = barberList
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
+
+    fun createBooking(barber: Barber, date: Pair<String, String>, time: String) {
+        viewModelScope.launch {
+            _bookingState.value = BookingState.Loading
+            try {
+                val userId = auth.currentUser?.uid ?: throw IllegalStateException("User not logged in")
+
+                // Simple date parsing (you might want a more robust solution)
+                val sdf = SimpleDateFormat("MMM dd yyyy hh:mm a", Locale.ENGLISH)
+                val dateString = "${date.second} ${date.first.split(" ")[1]} ${Calendar.getInstance().get(Calendar.YEAR)} $time"
+                val parsedDate = sdf.parse(dateString) ?: Date()
+
+                val newBooking = Booking(
+                    userId = userId,
+                    barberId = barber.id,
+                    barberName = barber.name,
+                    service = "Haircut", // Placeholder service
+                    dateTime = parsedDate,
+                    status = "upcoming"
+                )
+
+                db.collection("bookings").add(newBooking).await()
+                _bookingState.value = BookingState.Success
+            } catch (e: Exception) {
+                _bookingState.value = BookingState.Error(e.localizedMessage ?: "An unknown error occurred")
+            }
+        }
+    }
+
+    fun resetBookingState() {
+        _bookingState.value = BookingState.Idle
+    }
+}
+
+sealed class BookingState {
+    object Idle : BookingState()
+    object Loading : BookingState()
+    object Success : BookingState()
+    data class Error(val message: String) : BookingState()
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookAppointmentScreen(
     onBackClick: () -> Unit = {},
-    onConfirmBookingClick: () -> Unit = {} // New callback
+    onBookingSuccess: () -> Unit = {},
+    bookingViewModel: BookingViewModel = viewModel()
 ) {
-    // --- State variables to remember selections ---
+    val context = LocalContext.current
+    val barbers by bookingViewModel.barbers.collectAsState()
+    val bookingState by bookingViewModel.bookingState.collectAsState()
+
     var isBarberDropdownExpanded by remember { mutableStateOf(false) }
-    var selectedBarber by remember { mutableStateOf<String?>(null) }
+    var selectedBarber by remember { mutableStateOf<Barber?>(null) }
     var selectedDate by remember { mutableStateOf<Pair<String, String>?>(null) }
     var selectedTime by remember { mutableStateOf<String?>(null) }
+
+    // --- Handle Booking State ---
+    LaunchedEffect(bookingState) {
+        when (val state = bookingState) {
+            is BookingState.Success -> {
+                Toast.makeText(context, "Booking Confirmed!", Toast.LENGTH_LONG).show()
+                bookingViewModel.resetBookingState()
+                onBookingSuccess()
+            }
+            is BookingState.Error -> {
+                Toast.makeText(context, "Error: ${state.message}", Toast.LENGTH_LONG).show()
+                bookingViewModel.resetBookingState()
+            }
+            else -> {}
+        }
+    }
 
 
     Scaffold(
@@ -87,33 +165,32 @@ fun BookAppointmentScreen(
                 title = { Text("Book Appointment") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
         },
-        // We add a Button at the bottom
         bottomBar = {
             Button(
                 onClick = {
-                    // We'll pass all the selected data to the backend team
-                    // For now, just call the callback
-                    onConfirmBookingClick()
+                    if (selectedBarber != null && selectedDate != null && selectedTime != null) {
+                        bookingViewModel.createBooking(selectedBarber!!, selectedDate!!, selectedTime!!)
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                // Only enable the button if all selections are made
-                enabled = selectedBarber != null && selectedDate != null && selectedTime != null
+                enabled = selectedBarber != null && selectedDate != null && selectedTime != null && bookingState != BookingState.Loading
             ) {
-                Text(
-                    text = "Confirm Booking",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
+                if (bookingState == BookingState.Loading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    Text(
+                        text = "Confirm Booking",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
             }
         }
     ) { innerPadding ->
@@ -121,37 +198,31 @@ fun BookAppointmentScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp) // Add side padding for content
-                .verticalScroll(rememberScrollState()) // Make the whole page scrollable
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
 
-            // --- 1. Select Barber Dropdown ---
-            Text(
-                text = "Select Barber",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(top = 16.dp)
-            )
+            // --- 1. Select Barber ---
+            Text("Select Barber", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 16.dp))
             Spacer(modifier = Modifier.height(8.dp))
             ExposedDropdownMenuBox(
                 expanded = isBarberDropdownExpanded,
                 onExpandedChange = { isBarberDropdownExpanded = it }
             ) {
                 OutlinedTextField(
-                    value = selectedBarber ?: "Choose your barber",
+                    value = selectedBarber?.name ?: "Choose your barber",
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor() // This is important
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
                 )
                 ExposedDropdownMenu(
                     expanded = isBarberDropdownExpanded,
                     onDismissRequest = { isBarberDropdownExpanded = false }
                 ) {
-                    placeholderBarbers.forEach { barber ->
+                    barbers.forEach { barber ->
                         DropdownMenuItem(
-                            text = { Text(barber) },
+                            text = { Text(barber.name) },
                             onClick = {
                                 selectedBarber = barber
                                 isBarberDropdownExpanded = false
@@ -162,15 +233,9 @@ fun BookAppointmentScreen(
             }
 
             // --- 2. Select Date ---
-            Text(
-                text = "Select Date",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(top = 24.dp)
-            )
+            Text("Select Date", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 24.dp))
             Spacer(modifier = Modifier.height(8.dp))
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(placeholderDates) { date ->
                     DateChip(
                         date = date,
@@ -181,17 +246,13 @@ fun BookAppointmentScreen(
             }
 
             // --- 3. Select Time ---
-            Text(
-                text = "Select Time",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(top = 24.dp)
-            )
+            Text("Select Time", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 24.dp))
             Spacer(modifier = Modifier.height(8.dp))
             LazyVerticalGrid(
-                columns = GridCells.Fixed(3), // 3 columns
+                columns = GridCells.Fixed(3),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.height(250.dp) // Give the grid a fixed height
+                modifier = Modifier.height(250.dp)
             ) {
                 items(placeholderTimes) { time ->
                     TimeChip(
@@ -201,25 +262,16 @@ fun BookAppointmentScreen(
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(100.dp)) // Padding at bottom
+            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }
 
-// --- Reusable Components for this screen ---
-
 @Composable
-private fun DateChip(
-    date: Pair<String, String>,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
+private fun DateChip(date: Pair<String, String>, isSelected: Boolean, onClick: () -> Unit) {
     val (day, month) = date
-    val cardColors = if (isSelected) {
-        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
-    } else {
-        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    }
+    val cardColors = if (isSelected) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+    else CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
 
     Card(
@@ -242,16 +294,8 @@ private fun DateChip(
 }
 
 @Composable
-private fun TimeChip(
-    time: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val chipColor = if (isSelected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
+private fun TimeChip(time: String, isSelected: Boolean, onClick: () -> Unit) {
+    val chipColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
     val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
 
     Card(
@@ -266,8 +310,7 @@ private fun TimeChip(
             text = time,
             textAlign = TextAlign.Center,
             color = textColor,
-            modifier = Modifier
-                .padding(vertical = 12.dp, horizontal = 8.dp)
+            modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp)
         )
     }
 }

@@ -158,19 +158,13 @@ fun AppNavigation() {
             }
             composable(Screen.Bookings.route) {
                 BookingsScreen(
-                    upcomingBookings = emptyList(),
-                    pastBookings = emptyList()
+                    onRescheduleClick = {
+                        navController.navigate(Screen.BookAppointment.route)
+                    }
                 )
             }
             composable(Screen.Profile.route) {
                 ProfileScreen(
-                    onSaveChangesClick = {
-                        // TODO: Backend team will call their updateUser() API
-                    },
-                    onChangePasswordClick = {
-                        // TODO: Backend team will trigger navigation to a
-                        // new '''ChangePasswordScreen''' or show a dialog
-                    },
                     onLogoutClick = {
                         // Sign out from Firebase and navigate to Login
                         auth.signOut()
@@ -187,12 +181,16 @@ fun AppNavigation() {
             }
             composable(Screen.BookAppointment.route) {
                 BookAppointmentScreen(
-                    // This callback will send the user back
                     onBackClick = {
                         navController.popBackStack()
                     },
-                    onConfirmBookingClick = {
-                        navController.navigate(Screen.Bookings.route)
+                    onBookingSuccess = {
+                        // After booking, go to the Bookings screen and clear the booking screen from the backstack
+                        navController.navigate(Screen.Bookings.route) {
+                            popUpTo(Screen.BookAppointment.route) {
+                                inclusive = true
+                            }
+                        }
                     }
                 )
             }
